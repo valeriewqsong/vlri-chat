@@ -2,7 +2,8 @@ from abc import ABC, abstractmethod
 from typing import Dict, Any
 
 import torch
-from datasets import Dataset, load_dataset
+from datasets import Dataset, load_dataset, DatasetDict
+import pandas as pd
 from transformers.utils import logging
 
 logger = logging.get_logger("transformers")
@@ -175,6 +176,120 @@ class TrainSAD(TrainDataBase):
         prompt = self.generate_prompt(data_point, **kwargs)
         return self.tokenize(prompt, **kwargs)
 
+class TrainODKG(TrainDataBase):
+    def __init__(self, dataset: str, val_set_size: int, tokenizer, cutoff_len) -> None:
+        super().__init__(dataset, val_set_size, tokenizer, cutoff_len)
+    
+    def tokenize(self, prompt: str, use_eos_token=True, **kwargs) -> Dict[str, Any]:
+        pass
+    
+    def tokenizer_inputs(self, promptResponse, use_eos_token=True,**kwargs) -> Dict[str, Any]:
+        if use_eos_token:
+            result = self.tokenizer(
+                promptResponse['prompt'] + self.tokenizer.eos_token,
+                promptResponse['response'] + self.tokenizer.eos_token,
+                truncation=True,
+                max_length=self.cutoff_len,
+                padding=False,
+                return_tensors = 'pt',
+            )
+            if (
+                result["input_ids"][-1] != self.tokenizer.eos_token_id
+                and len(result["input_ids"]) < self.cutoff_len
+            ):
+                result["input_ids"].append(self.tokenizer.eos_token_id)
+                result["attention_mask"].append(1)
+            return result
+        else:
+            result = self.tokenizer(
+                promptResponse['prompt'],
+                promptResponse['response'],
+                truncation=True,
+                max_length=self.cutoff_len + 1,
+                padding="max_length",
+                return_tensors = 'pt',
+            )
+            return {
+                "input_ids": result["input_ids"][:-1],
+                "attention_mask": result["attention_mask"][:-1],
+            }            
+            
+    def preprocessing_data(inp:Dict,split):
+        ft_prompt = []
+        ft_response = []
+
+        for log in inp[split]['log']:
+            for user_utterance in log:
+                ft_prompt.append(user_utterance['user utterance'])
+
+        for log in inp[split]['log']:
+            for system_utterance in log:
+                ft_response.append(system_utterance['system response'])
+
+        return {'prompt':ft_prompt,'response':ft_response}
+            
+
+    def remove(inp:Dict):
+        inp = inp.remove_columns(['prompt','response'])
+        inp.set_format("torch")
+        return inp
+    
+    
+    def prepare_data(self, use_eos_token=True, **kwargs) -> None:
+        data = load_dataset('Salesforce/dialogstudio','OpenDialKG')
+
+        # Split the 'train' feature into validation and test sets
+
+        # 80% train, 20% test + validation
+        train_testvalid = data['train'].train_test_split(
+            test_size=0.2,
+            shuffle=True,
+            seed=42)
+
+        # Split the 20% test + valid in half test, half valid
+        test_valid = train_testvalid['test'].train_test_split(
+            test_size=0.5,
+            shuffle=True,
+            seed = 42)
+
+        main_dataset = DatasetDict({
+            'train': train_testvalid['train'],
+            'validation': test_valid['test'],
+            'test': test_valid['train']
+            })
+        
+        train_prompt_response = preprocessing_data(main_dataset,'train')
+        val_prompt_response = preprocessing_data(main_dataset,'validation')
+        test_prompt_response = preprocessing_data(main_dataset,'test')
+        
+        #Convert to Dataset
+
+        train_prompt_response = datasets.Dataset.from_pandas(pd.DataFrame(data=train_prompt_response))
+        val_prompt_response = datasets.Dataset.from_pandas(pd.DataFrame(data=val_prompt_response))
+        test_prompt_response = datasets.Dataset.from_pandas(pd.DataFrame(data=test_prompt_response))
+
+        # Tokenize data with map function
+
+        self.train_data = train_prompt_response.map(lambda x: tokenizer_inputs(x,use_eos_token= use_eos_token,**kwargs),batched = True)
+        self.val_data = val_prompt_response.map(lambda x: tokenizer_inputs(x,use_eos_token= use_eos_token),batched = True)
+        self.test_data = test_prompt_response.map(lambda x: tokenizer_inputs(x,use_eos_token= use_eos_token),batched = True)
+
+        self.train_data = remove(self.train_data)
+        self.val_data = remove(self.val_data)
+        self.test_data = remove(self.test_data)
+
+        # if self.val_set_size > 0:
+        #     train_val = data["train"].train_test_split(test_size=self.val_set_size, shuffle=True, seed=42)
+        #     self.train_data = train_val["train"].shuffle().map(lambda x: self.generate_and_tokenize_prompt(x, use_eos_token=use_eos_token))
+        #     self.val_data = train_val["test"].shuffle().map(lambda x: self.generate_and_tokenize_prompt(x, use_eos_token=use_eos_token))
+        # else:
+        #     self.train_data = data["train"].shuffle().map(lambda x: self.generate_and_tokenize_prompt(x, use_eos_token=use_eos_token))
+        #     self.val_data = None
+
+
+    
+
+
 
 def make_prompt(instruction, input_, output=""):
     return "{0}\n\n{1}\n{2}\n\n{3}\n{4}\n\n{5}\n{6}".format(
@@ -202,15 +317,21 @@ def load_data(config, tokenizer):
             config.val_set_size,
             tokenizer,
             config.cutoff_len)
-
+    elif config.data_type == "ODKG":
+        data = TrainODKG(
+            config.dataset,
+            config.val_set_size,
+            tokenizer,
+            config.cutoff_len
+        )
     else:
         raise ValueError(f"Invalid data name: {config.data_type}")
 
     data.prepare_data(use_eos_token=config.use_eos_token)
     return data
 
-
 DATA_TYPES = [
     "alpaca",
     "gpt4all",
+    "ODKG"
 ]

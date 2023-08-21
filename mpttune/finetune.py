@@ -152,7 +152,7 @@ def finetune(args):
             transformers.logging.set_verbosity_info()
 
         # Run Trainer
-        with wandb.init(project="alpaca_lora_4bit") as run:
+        with wandb.init(project="vlri-chat-lora") as run:
             if tune_config.resume_checkpoint:
                 logger.info('Resuming from {} ...'.format(tune_config.resume_checkpoint))
                 state_dict_peft = torch.load(os.path.join(tune_config.resume_checkpoint, 'pytorch_model.bin'), map_location='cpu')
