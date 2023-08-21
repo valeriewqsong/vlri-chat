@@ -186,36 +186,36 @@ class TrainODKG(TrainDataBase):
         pass
     
     def tokenizer_inputs(self, promptResponse, use_eos_token=True,**kwargs) -> Dict[str, Any]:
-        if use_eos_token:
-            result = self.tokenizer(
-                promptResponse['prompt'],
-                promptResponse['response'],
-                truncation=True,
-                padding=True,
-                max_length=self.cutoff_len,
-                return_tensors = 'pt',
-                add_special_tokens = True,
-            )
-            if (
-                result["input_ids"][-1] != self.tokenizer.eos_token_id
-                and len(result["input_ids"]) < self.cutoff_len
-            ):
-                result["input_ids"].append(self.tokenizer.eos_token_id)
-                result["attention_mask"].append(1)
-            return result
-        else:
-            result = self.tokenizer(
-                promptResponse['prompt'],
-                promptResponse['response'],
-                truncation=True,
-                padding = True,
-                max_length=self.cutoff_len + 1,
-                return_tensors = 'pt',
-            )
-            return {
-                "input_ids": result["input_ids"][:-1],
-                "attention_mask": result["attention_mask"][:-1],
-            }            
+        # if use_eos_token:
+        #     result = self.tokenizer(
+        #         promptResponse['prompt'],
+        #         promptResponse['response'],
+        #         truncation=True,
+        #         padding=True,
+        #         max_length=self.cutoff_len,
+        #         return_tensors = 'pt',
+        #         add_special_tokens = True,
+        #     )
+        #     if (
+        #         result["input_ids"][-1] != self.tokenizer.eos_token_id
+        #         and len(result["input_ids"]) < self.cutoff_len
+        #     ):
+        #         result["input_ids"].append(self.tokenizer.eos_token_id)
+        #         result["attention_mask"].append(1)
+        #     return result
+        # else:
+        result = self.tokenizer(
+            promptResponse['prompt'],
+            promptResponse['response'],
+            truncation=True,
+            padding = True,
+            max_length=self.cutoff_len + 1,
+            return_tensors = 'pt',
+             )
+        return {
+            "input_ids": result["input_ids"][:-1],
+            "attention_mask": result["attention_mask"][:-1],
+        }            
             
     def preprocessing_data(self,inp:Dict,split:str):
         ft_prompt = []
