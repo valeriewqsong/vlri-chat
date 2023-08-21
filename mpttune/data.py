@@ -194,7 +194,7 @@ class TrainODKG(TrainDataBase):
                 max_length=self.cutoff_len,
                 padding=False,
                 return_tensors = 'pt',
-                add_special_token = True,
+                add_special_tokens = True,
             )
             if (
                 result["input_ids"][-1] != self.tokenizer.eos_token_id
