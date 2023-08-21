@@ -193,7 +193,6 @@ class TrainODKG(TrainDataBase):
                 truncation=True,
                 padding=True,
                 max_length=self.cutoff_len,
-                padding=False,
                 return_tensors = 'pt',
                 add_special_tokens = True,
             )
