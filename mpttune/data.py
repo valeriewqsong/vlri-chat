@@ -208,13 +208,13 @@ class TrainODKG(TrainDataBase):
             promptResponse['prompt'],
             promptResponse['response'],
             truncation=True,
-            padding = True,
+            padding = "max_length",
             max_length=self.cutoff_len + 1,
             return_tensors = 'pt',
              )
         return {
-            "input_ids": result["input_ids"][:-1],
-            "attention_mask": result["attention_mask"][:-1],
+            "input_ids": result["input_ids"],
+            "attention_mask": result["attention_mask"],
         }            
             
     def preprocessing_data(self,inp:Dict,split:str):
