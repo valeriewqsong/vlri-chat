@@ -188,12 +188,13 @@ class TrainODKG(TrainDataBase):
     def tokenizer_inputs(self, promptResponse, use_eos_token=True,**kwargs) -> Dict[str, Any]:
         if use_eos_token:
             result = self.tokenizer(
-                promptResponse['prompt'] + self.tokenizer.eos_token,
-                promptResponse['response'] + self.tokenizer.eos_token,
+                promptResponse['prompt'],
+                promptResponse['response'],
                 truncation=True,
                 max_length=self.cutoff_len,
                 padding=False,
                 return_tensors = 'pt',
+                add_special_token = True,
             )
             if (
                 result["input_ids"][-1] != self.tokenizer.eos_token_id
