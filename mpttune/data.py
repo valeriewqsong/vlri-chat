@@ -214,7 +214,7 @@ class TrainODKG(TrainDataBase):
                 "attention_mask": result["attention_mask"][:-1],
             }            
             
-    def preprocessing_data(inp:Dict,split):
+    def preprocessing_data(self,inp:Dict,split:str):
         ft_prompt = []
         ft_response = []
 
@@ -229,7 +229,7 @@ class TrainODKG(TrainDataBase):
         return {'prompt':ft_prompt,'response':ft_response}
             
 
-    def remove(inp:Dict):
+    def remove(self,inp:Dict):
         inp = inp.remove_columns(['prompt','response'])
         inp.set_format("torch")
         return inp
@@ -258,25 +258,25 @@ class TrainODKG(TrainDataBase):
             'test': test_valid['train']
             })
         
-        train_prompt_response = preprocessing_data(main_dataset,'train')
-        val_prompt_response = preprocessing_data(main_dataset,'validation')
-        test_prompt_response = preprocessing_data(main_dataset,'test')
+        train_prompt_response = self.preprocessing_data(main_dataset,'train')
+        val_prompt_response = self.preprocessing_data(main_dataset,'validation')
+        test_prompt_response = self.preprocessing_data(main_dataset,'test')
         
         #Convert to Dataset
 
-        train_prompt_response = datasets.Dataset.from_pandas(pd.DataFrame(data=train_prompt_response))
-        val_prompt_response = datasets.Dataset.from_pandas(pd.DataFrame(data=val_prompt_response))
-        test_prompt_response = datasets.Dataset.from_pandas(pd.DataFrame(data=test_prompt_response))
+        train_prompt_response = self.datasets.Dataset.from_pandas(pd.DataFrame(data=train_prompt_response))
+        val_prompt_response = self.datasets.Dataset.from_pandas(pd.DataFrame(data=val_prompt_response))
+        test_prompt_response = self.datasets.Dataset.from_pandas(pd.DataFrame(data=test_prompt_response))
 
         # Tokenize data with map function
 
-        self.train_data = train_prompt_response.map(lambda x: tokenizer_inputs(x,use_eos_token= use_eos_token,**kwargs),batched = True)
-        self.val_data = val_prompt_response.map(lambda x: tokenizer_inputs(x,use_eos_token= use_eos_token),batched = True)
-        self.test_data = test_prompt_response.map(lambda x: tokenizer_inputs(x,use_eos_token= use_eos_token),batched = True)
+        self.train_data = train_prompt_response.map(lambda x: self.tokenizer_inputs(x,use_eos_token= use_eos_token,**kwargs),batched = True)
+        self.val_data = val_prompt_response.map(lambda x: self.tokenizer_inputs(x,use_eos_token= use_eos_token),batched = True)
+        self.test_data = test_prompt_response.map(lambda x: self.tokenizer_inputs(x,use_eos_token= use_eos_token),batched = True)
 
-        self.train_data = remove(self.train_data)
-        self.val_data = remove(self.val_data)
-        self.test_data = remove(self.test_data)
+        self.train_data = self.remove(self.train_data)
+        self.val_data = self.remove(self.val_data)
+        self.test_data = self.remove(self.test_data)
 
         # if self.val_set_size > 0:
         #     train_val = data["train"].train_test_split(test_size=self.val_set_size, shuffle=True, seed=42)
