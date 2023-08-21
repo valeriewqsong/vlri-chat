@@ -1,9 +1,11 @@
 from abc import ABC, abstractmethod
 from typing import Dict, Any
 
+import datasets
 import torch
-from datasets import Dataset, load_dataset, DatasetDict
+from datasets import load_dataset, DatasetDict
 import pandas as pd
+
 from transformers.utils import logging
 
 logger = logging.get_logger("transformers")
@@ -264,9 +266,9 @@ class TrainODKG(TrainDataBase):
         
         #Convert to Dataset
 
-        train_prompt_response = self.datasets.Dataset.from_pandas(pd.DataFrame(data=train_prompt_response))
-        val_prompt_response = self.datasets.Dataset.from_pandas(pd.DataFrame(data=val_prompt_response))
-        test_prompt_response = self.datasets.Dataset.from_pandas(pd.DataFrame(data=test_prompt_response))
+        train_prompt_response = datasets.Dataset.from_pandas(pd.DataFrame(data=train_prompt_response))
+        val_prompt_response = datasets.Dataset.from_pandas(pd.DataFrame(data=val_prompt_response))
+        test_prompt_response = datasets.Dataset.from_pandas(pd.DataFrame(data=test_prompt_response))
 
         # Tokenize data with map function
 
